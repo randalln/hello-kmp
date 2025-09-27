@@ -1,19 +1,33 @@
+rootProject.name = "HelloWorldKMP"
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
-
-    val kotlinVersion: String by settings
-    val kspVersion: String by settings
-
-    plugins {
-        id("com.google.devtools.ksp") version kspVersion apply false
-    }
-
     repositories {
-        google()
+        google {
+            mavenContent {
+                includeGroupAndSubgroups("androidx")
+                includeGroupAndSubgroups("com.android")
+                includeGroupAndSubgroups("com.google")
+            }
+        }
+        mavenCentral()
         gradlePluginPortal()
         mavenCentral()
     }
 }
 
-rootProject.name = "HelloWorldKMP"
+dependencyResolutionManagement {
+    repositories {
+        google {
+            mavenContent {
+                includeGroupAndSubgroups("androidx")
+                includeGroupAndSubgroups("com.android")
+                includeGroupAndSubgroups("com.google")
+            }
+        }
+        mavenCentral()
+    }
+}
+
 include(":androidApp")
 include(":shared")

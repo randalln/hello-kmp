@@ -1,87 +1,82 @@
-import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    kotlin("multiplatform")
-    id("com.google.devtools.ksp")
-    kotlin("native.cocoapods")
-    id("com.android.library")
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.ksp)
     id("maven-publish")
 }
 
-version = "1.0"
-
 kotlin {
-    jvmToolchain(11)
-    targetHierarchy.default()
+    jvmToolchain(17)
 
-    androidTarget()
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    compilerOptions {
+        // Common compiler options applied to all Kotlin source sets
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
 
-    cocoapods {
-        summary = "Some description for the Shared Module"
-        homepage = "Link to the Shared Module homepage"
-        ios.deploymentTarget = "14.1"
-        podfile = project.file("../iosApp/Podfile")
-        framework {
-            baseName = "shared"
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+            binaryOption("bundleId", "Shared")
         }
     }
 
     sourceSets {
-        val commonMain by getting {
+        commonMain.dependencies {
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.core)
+            api(libs.koin.annotations)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
+
+        // KSP Common sourceSet
+        sourceSets.named("commonMain").configure {
             kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
-            dependencies {
-                with(Deps.Koin) {
-                    api(core)
-                    api(test)
-                    api(annotations)
-                }
-            }
         }
-        val commonTest by getting {
-            dependencies {
-                implementation(kotlin("test"))
-            }
-        }
-        val androidMain by getting
-        val androidUnitTest by getting
-        val iosMain by getting
-        val iosTest by getting
     }
 }
 
 android {
-    compileSdk = 33
-    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
     defaultConfig {
-        minSdk = 21
-        targetSdk = 33
+        minSdk = libs.versions.android.minSdk.get().toInt()
     }
     namespace = "com.example.helloworldkmp"
 }
 
 dependencies {
-    add("kspCommonMainMetadata", Deps.Koin.kspCompiler)
-    // DO NOT add bellow dependencies
-//    add("kspAndroid", Deps.Koin.kspCompiler)
-//    add("kspIosX64", Deps.Koin.kspCompiler)
-//    add("kspIosArm64", Deps.Koin.kspCompiler)
-//    add("kspIosSimulatorArm64", Deps.Koin.kspCompiler)
+    add("kspCommonMainMetadata", libs.koin.ksp.compiler)
+    add("kspAndroid", libs.koin.ksp.compiler)
+    add("kspIosX64", libs.koin.ksp.compiler)
+    add("kspIosArm64", libs.koin.ksp.compiler)
+    add("kspIosSimulatorArm64", libs.koin.ksp.compiler)
 }
 
-// WORKAROUND: ADD this dependsOn("kspCommonMainKotlinMetadata") instead of above dependencies
-tasks.withType<KotlinCompile<*>>().configureEach {
-    if (name != "kspCommonMainKotlinMetadata") {
-        dependsOn("kspCommonMainKotlinMetadata")
-    }
+// Trigger Common Metadata Generation from Native tasks
+tasks.matching { it.name.startsWith("ksp") && it.name != "kspCommonMainKotlinMetadata" }.configureEach {
+    dependsOn("kspCommonMainKotlinMetadata")
 }
-afterEvaluate {
-    tasks.filter {
-        it.name.contains("SourcesJar", true)
-    }?.forEach {
-        println("SourceJarTask====>${it.name}")
-        it.dependsOn("kspCommonMainKotlinMetadata")
-    }
+tasks.matching {
+    it.name.startsWith("runKtlintCheckOverCommonMainSourceSet") &&
+            it.name != "kspCommonMainKotlinMetadata"
+}.configureEach {
+    dependsOn("kspCommonMainKotlinMetadata")
 }

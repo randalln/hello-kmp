@@ -11,6 +11,7 @@ gradle-app.setting
 # gradle/wrapper/gradle-wrapper.properties
 
 .idea
+.kotlin
 .gradle
 /local.properties
 /.idea/caches
