@@ -70,6 +70,10 @@ dependencies {
     add("kspIosSimulatorArm64", libs.koin.ksp.compiler)
 }
 
+ksp {
+    arg("KOIN_CONFIG_CHECK", "true")
+}
+
 // Trigger Common Metadata Generation from Native tasks
 tasks.matching { it.name.startsWith("ksp") && it.name != "kspCommonMainKotlinMetadata" }.configureEach {
     dependsOn("kspCommonMainKotlinMetadata")
